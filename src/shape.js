@@ -1,23 +1,27 @@
 import * as utils from './utils'
 
 export default class Shape {
-  constructor(color, shape, isTarget, index, x, y) {
-
+  constructor(color, shape, isTarget, index, lifespan) {
     this.color = color
     this.shape = shape
 
-    this.x = isTarget ? 60 : 145 + utils.random(471)
-    this.y = isTarget ? 60 + index * 80 : 25 + utils.random(311)
+    this.isTarget = isTarget
+    this.index = index
+    this.lifespan = 1
+
+    this.x = isTarget ? 60 : 180 + (index % 6) * 80
+    this.y = isTarget ? 60 + index * 80 : 60 + Math.floor(index / 6) * 80
 
     this.graphics = game.add.graphics(this.x, this.y)
+    this.clickable = false
 
-    this.fadeIn = game.add.tween(this.graphics).from({alpha: 0}, 1000, "Quart.easeIn", true)
-    this.fadeOut = game.add.tween(this.graphics).to({alpha: 0}, 1000, "Quart.easeOut")
+    game.add.tween(this.graphics).from({alpha: 0}, 1000, Phaser.Easing.Linear.None)
   }
 
   draw() {
     this.graphics.clear()
     this.graphics.lineStyle(4, this.color, 1)
+    this.graphics.beginFill(0x000000)
     switch (this.shape) {
       case 'triangleUp':
         this.graphics.drawTriangle([0, -17, -20, 18, 20, 18, 0, -17])
@@ -48,6 +52,24 @@ export default class Shape {
         break
       default:
     }
+    this.graphics.endFill()
+  }
+
+  tick() {
+    this.lifespan -= 1
+  }
+
+  destroy() {
+    return game.add.tween(this.graphics).to({alpha: 0}, 1000, "Quart.easeOut", true)
+  }
+
+  success() {
+    game.add.tween(this.graphics).to({alpha: 0}, 1000, "Quart.easeOut", true)
+    return game.add.tween(this.graphics.scale).to({x: 5, y: 5}, 1000, "Quart.easeOut", true)
+  }
+
+  miss() {
+    return game.add.tween(this.graphics.scale).to({x: 2, y: 2}, 230, "Sine.easeInOut", true, 0, -1, true);
   }
 
   equals(shape) {

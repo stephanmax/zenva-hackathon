@@ -7,7 +7,7 @@ export default class extends Phaser.State {
   }
 
   create () {
-    game.add.audio('background').play('', 0, 0.3, true)
+    // game.add.audio('background').play('', 0, 0.3, true)
 
     game.state.start('Play')
   }
