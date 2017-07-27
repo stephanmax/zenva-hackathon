@@ -5,3 +5,7 @@ export function random(x) {
 export function randomPick(arr) {
   return arr[random(arr.length)]
 }
+
+export function randomFloat(x) {
+  return Math.random() * x
+}

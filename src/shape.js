@@ -7,7 +7,7 @@ export default class Shape {
 
     this.isTarget = isTarget
     this.index = index
-    this.lifespan = 1
+    this.lifespan = lifespan
 
     this.x = isTarget ? 60 : 180 + (index % 6) * 80
     this.y = isTarget ? 60 + index * 80 : 60 + Math.floor(index / 6) * 80
@@ -15,7 +15,7 @@ export default class Shape {
     this.graphics = game.add.graphics(this.x, this.y)
     this.clickable = false
 
-    game.add.tween(this.graphics).from({alpha: 0}, 1000, Phaser.Easing.Linear.None)
+    game.add.tween(this.graphics).from({alpha: 0}, 1000, Phaser.Easing.Linear.None, true)
   }
 
   draw() {
@@ -55,21 +55,21 @@ export default class Shape {
     this.graphics.endFill()
   }
 
-  tick() {
-    this.lifespan -= 1
-  }
+  destroy(style) {
+    this.graphics.inputEnabled = false
 
-  destroy() {
-    return game.add.tween(this.graphics).to({alpha: 0}, 1000, "Quart.easeOut", true)
-  }
-
-  success() {
-    game.add.tween(this.graphics).to({alpha: 0}, 1000, "Quart.easeOut", true)
-    return game.add.tween(this.graphics.scale).to({x: 5, y: 5}, 1000, "Quart.easeOut", true)
-  }
-
-  miss() {
-    return game.add.tween(this.graphics.scale).to({x: 2, y: 2}, 230, "Sine.easeInOut", true, 0, -1, true);
+    switch (style) {
+      case 'miss':
+        game.add.tween(this.graphics.scale).to({x: 0.5, y: 0.5}, 200, Phaser.Easing.Sinusoidal.InOut, true, 0, 5, true)
+        return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.In, true)
+        break
+      case 'success':
+        game.add.tween(this.graphics.scale).to({x: 5, y: 5}, 1000, Phaser.Easing.Linear.In, true)
+        return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.Out, true)
+        break
+      default:
+        return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.Out, true)
+    }
   }
 
   equals(shape) {
