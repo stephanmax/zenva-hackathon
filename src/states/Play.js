@@ -9,9 +9,8 @@ export default class extends Phaser.State {
     this.TICK = 100
     this.COLORSTARGET = [0xffffff, 0x00c0ff, 0xff0141]
     this.COLORSSHAPE = [0x00c0ff, 0xff0141]
-    this.EXTRACOLORS = [0x53eca5, 0xffff01, 0xfb8e4b, 0xec50aa]
     this.SHAPES = ['circle', 'square']
-    this.EXTRASHAPES = ['triangleUp', 'pentagon', 'triangleDown', 'diamond', 'hexagon']
+    this.EXTRAS = ['triangleUp', 'pentagon', 'triangleDown', 'diamond', 'hexagon', 0x53eca5, 0xffff01, 0xfb8e4b, 0xec50aa]
 
     this.targets = [undefined, undefined, undefined, undefined]
     this.shapes = []
@@ -23,20 +22,21 @@ export default class extends Phaser.State {
     this.lives = this.MAXLIVES
     this.lifeOrbs = []
 
+    this.time = 0
     this.score = 0
 
     this.difficulties = [{
-      value: 10,
+      value: 6,
       rate: 2
     }, {
-      value: 10,
+      value: 7,
       rate: 1
     }, {
-      value: 2,
-      rate: 0.4
+      value: 1,
+      rate: 0.3
     }, {
-      value: 2,
-      rate: 0.4
+      value: 1,
+      rate: 0.3
     }]
 
     this.targetChangeOptions = ['add', 'remove']
@@ -62,14 +62,26 @@ export default class extends Phaser.State {
       this.hud.endFill()
 
       let lifeOrb = game.add.graphics(120, 320 - i * (280 / (this.MAXLIVES-1)))
-      let lifeAnimScale = game.add.tween(lifeOrb.scale).to({x: 8, y: 8}, 2000, Phaser.Easing.Linear.In)
-      let lifeAnimFade = game.add.tween(lifeOrb).to({alpha: 0}, 2000, Phaser.Easing.Quartic.Out)
+      let lifeAnimScale = game.add.tween(lifeOrb.scale).to({x: 10, y: 10}, 1500, Phaser.Easing.Quadratic.EaseOut)
+      let lifeAnimFade = game.add.tween(lifeOrb).to({alpha: 0}, 1500, Phaser.Easing.Linear.In)
 
       this.lifeOrbs.push({lifeOrb, animate: () => {
         lifeAnimScale.start()
         lifeAnimFade.start()
       }})
     })
+
+    let bmd = game.add.bitmapData(32, 32)
+    let radgrad = bmd.ctx.createRadialGradient(16, 16, 2, 16, 16, 16)
+    radgrad.addColorStop(0, 'rgba(255, 255, 255, 1)')
+    radgrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    bmd.context.fillStyle = radgrad
+    bmd.context.fillRect(0, 0, 32, 32)
+
+    game.cache.addBitmapData('particleShade', bmd)
+
+    this.scoreText = game.add.text(game.world.centerX + 60, game.world.centerY, this.score, {font: "180px 'Helvetica Neue'", fill: "rgba(255, 255, 255, 0.25)", align: "center"})
+    this.scoreText.anchor.set(0.5)
 
     this.timer = game.time.events.loop(100, this.tick, this)
   }
@@ -95,6 +107,7 @@ export default class extends Phaser.State {
         }
         else {
           shape.destroy().onComplete.add(() => this.cleanup(shape))
+          this.score++
         }
       }
     })
@@ -106,12 +119,26 @@ export default class extends Phaser.State {
       if (!shape.clickable) {
         shape.graphics.inputEnabled = true
         shape.graphics.input.useHandCursor = true
-        shape.graphics.events.onInputUp.add(() => {
+        shape.graphics.events.onInputUp.add((pointer) => {
           this.shapes[shape.index] = undefined
           let success = this.targets.some(target => target !== undefined && target.equals(shape))
           if (success) {
             this.successSound.play()
             shape.destroy('success').onComplete.add(() => this.cleanup(shape))
+            this.score++
+
+            let bmd = game.cache.getBitmapData('particleShade')
+            bmd.context.clearRect(0, 0, 32, 32)
+            let radgrad = bmd.ctx.createRadialGradient(16, 16, 2, 16, 16, 16)
+            let c = Phaser.Color.getRGB(shape.color)
+            radgrad.addColorStop(0, Phaser.Color.getWebRGB(c))
+            c.a = 0
+            radgrad.addColorStop(1, Phaser.Color.getWebRGB(c))
+            bmd.context.fillStyle = radgrad
+            bmd.context.fillRect(0, 0, 32, 32)
+            bmd.dirty = true
+
+            shape.emitter.start(true, 1000, null, 10)
           }
           else {
             this.failSound.play('', 0, 0.3)
@@ -123,6 +150,7 @@ export default class extends Phaser.State {
         shape.clickable = true
       }
     })
+    this.scoreText.setText(this.score)
   }
 
   tick() {
@@ -131,7 +159,7 @@ export default class extends Phaser.State {
 
     this.shapes.filter(shape => shape !== undefined).forEach(shape => shape.lifespan -= this.TICK / Phaser.Timer.SECOND)
 
-    this.score += this.TICK / 1000
+    this.time += this.TICK / 1000
 
     this.progressDifficulty()
   }
@@ -199,7 +227,7 @@ export default class extends Phaser.State {
         })
       }
 
-      this.secondsToNextTargetChange = 3 + this.difficulties[0].value + utils.randomFloat(4 + this.difficulties[1].value)
+      this.secondsToNextTargetChange = 2 + this.difficulties[0].value + utils.randomFloat(2 + this.difficulties[1].value)
     }
   }
 
@@ -213,32 +241,29 @@ export default class extends Phaser.State {
 
         this.shapes[index] = new Shape(color, shape, false, index, 2 + this.difficultyShapeLifespanConst + utils.randomFloat(3 + this.difficultyShapeLifespanVar))
       }
-      this.secondsToNextShape = 0.5 + 0.1 * (4 - this.targets.filter(target => target !== undefined).length) + this.difficulties[2].value + utils.randomFloat(1 + this.difficulties[3].value)
-      console.log(this.secondsToNextShape)
+      this.secondsToNextShape = 0.5 + this.difficulties[2].value + utils.randomFloat(0.5 + this.difficulties[3].value)
     }
   }
 
   progressDifficulty() {
-    if (this.score % 45 < 0.1) {
-      let dice = utils.random(2)
-      if (dice === 0) {
-        if (this.EXTRACOLORS.length > 0) {
-          this.COLORSTARGET.push(this.EXTRACOLORS.shift())
-          this.COLORSSHAPE.push(this.EXTRACOLORS.shift())
+    if (this.time % 25 < 0.1) {
+      if (this.EXTRAS.length > 0) {
+        let extra = this.EXTRAS.splice(utils.random(this.EXTRAS.length), 1)[0]
+        if (typeof extra === "number") {
+          this.COLORSTARGET.push(extra)
+          this.COLORSSHAPE.push(extra)
         }
-      }
-      if (dice === 1) {
-        if (this.EXTRASHAPES.length > 0) {
-          this.SHAPES.push(this.EXTRASHAPES.shift())
+        else {
+          this.SHAPES.push(extra)
         }
       }
     }
 
-    if (this.score % 60 < 0.1) {
+    if (this.time % 20 < 0.1) {
       this.targetChangeOptions.push('add')
     }
 
-    if (this.score % 10 < 0.1) {
+    if (this.time % 5 < 0.1) {
       this.difficulties.forEach((difficulty) => {
         if (difficulty.value > 0) {
           difficulty.value = Math.max(0, difficulty.value - difficulty.rate)
@@ -252,8 +277,8 @@ export default class extends Phaser.State {
     this.availableShapeIndexes.push(shape.index)
   }
 
-  // render() {
-  //   this.game.debug.text(`Tweens: ${game.tweens.getAll().length}`, 20, 20, 'lime')
-  //   this.game.debug.text(`Points: ${this.score}`, 20, 36, 'lime')
-  // }
+  render() {
+    // this.game.debug.text(`Tweens: ${game.tweens.getAll().length}`, 20, 20, 'lime')
+    // this.game.debug.text(`Points: ${this.score}`, 20, 36, 'lime')
+  }
 }

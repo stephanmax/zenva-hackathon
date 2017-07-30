@@ -1,4 +1,5 @@
 import * as utils from './utils'
+import MyParticle from './particle'
 
 export default class Shape {
   constructor(color, shape, isTarget, index, lifespan) {
@@ -14,6 +15,11 @@ export default class Shape {
 
     this.graphics = game.add.graphics(this.x, this.y)
     this.clickable = false
+
+    this.emitter = game.add.emitter(this.x, this.y, 100)
+    this.emitter.particleClass = MyParticle
+    this.emitter.makeParticles()
+    // this.emitter.gravity = 200
 
     game.add.tween(this.graphics).from({alpha: 0}, 1000, Phaser.Easing.Linear.None, true)
   }
@@ -65,6 +71,11 @@ export default class Shape {
         break
       case 'success':
         game.add.tween(this.graphics.scale).to({x: 5, y: 5}, 1000, Phaser.Easing.Linear.In, true)
+        return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.Out, true)
+        break
+      case 'fail':
+        let bounce = game.add.tween(this.graphics).to({x: 10}, 900, Phaser.Easing.Bounce.InOut, true, 0, 5, true)
+        game.add.tween(this.graphics).to({x: -10}, 100, Phaser.Easing.Linear.In, true).chain(bounce)
         return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.Out, true)
         break
       default:
