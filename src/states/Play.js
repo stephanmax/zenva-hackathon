@@ -7,6 +7,7 @@ export default class extends Phaser.State {
   init() {
     this.MAXLIVES = 10
     this.TICK = 100
+    this.COLORS = [0x00c0ff, 0xff0141, 0x53eca5, 0xffff01, 0xfb8e4b, 0xec50aa]
     this.COLORSTARGET = [0xffffff, 0x00c0ff, 0xff0141]
     this.COLORSSHAPE = [0x00c0ff, 0xff0141]
     this.SHAPES = ['circle', 'square']
@@ -24,6 +25,7 @@ export default class extends Phaser.State {
 
     this.time = 0
     this.score = 0
+    this.streak = 0
 
     this.difficulties = [{
       value: 6,
@@ -71,16 +73,20 @@ export default class extends Phaser.State {
       }})
     })
 
-    let bmd = game.add.bitmapData(32, 32)
-    let radgrad = bmd.ctx.createRadialGradient(16, 16, 2, 16, 16, 16)
-    radgrad.addColorStop(0, 'rgba(255, 255, 255, 1)')
-    radgrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
-    bmd.context.fillStyle = radgrad
-    bmd.context.fillRect(0, 0, 32, 32)
+    this.COLORS.forEach((color) => {
+      let bmd = game.add.bitmapData(32, 32)
+      let radgrad = bmd.ctx.createRadialGradient(16, 16, 2, 16, 16, 16)
+      let c = Phaser.Color.getRGB(color)
+      radgrad.addColorStop(0, Phaser.Color.getWebRGB(c))
+      c.a = 0
+      radgrad.addColorStop(1, Phaser.Color.getWebRGB(c))
+      bmd.context.fillStyle = radgrad
+      bmd.context.fillRect(0, 0, 32, 32)
 
-    game.cache.addBitmapData('particleShade', bmd)
+      game.cache.addBitmapData('particleShade' + color, bmd)
+    })
 
-    this.scoreText = game.add.text(game.world.centerX + 60, game.world.centerY, this.score, {font: "180px 'Helvetica Neue'", fill: "rgba(255, 255, 255, 0.25)", align: "center"})
+    this.scoreText = game.add.text(game.world.centerX + 60, game.world.centerY, this.score, {font: "180px 'Helvetica Neue'", fill: "rgba(255, 255, 255, 0.15)", align: "center"})
     this.scoreText.anchor.set(0.5)
 
     this.timer = game.time.events.loop(100, this.tick, this)
@@ -100,14 +106,16 @@ export default class extends Phaser.State {
         this.shapes[shape.index] = undefined
         let miss = this.targets.some(target => target !== undefined && target.equals(shape))
         if (miss) {
-          this.missSound.play('', 0, 0.5)
+          this.missSound.play('', 0, 0.7)
           this.lives -= 1
           this.lifeOrbs[Math.max(this.lives, 0)].animate()
           shape.destroy('miss').onComplete.add(() => this.cleanup(shape))
+          this.streak = 0
         }
         else {
           shape.destroy().onComplete.add(() => this.cleanup(shape))
           this.score++
+          this.streak++
         }
       }
     })
@@ -124,25 +132,14 @@ export default class extends Phaser.State {
           let success = this.targets.some(target => target !== undefined && target.equals(shape))
           if (success) {
             this.successSound.play()
-            shape.destroy('success').onComplete.add(() => this.cleanup(shape))
             this.score++
-
-            let bmd = game.cache.getBitmapData('particleShade')
-            bmd.context.clearRect(0, 0, 32, 32)
-            let radgrad = bmd.ctx.createRadialGradient(16, 16, 2, 16, 16, 16)
-            let c = Phaser.Color.getRGB(shape.color)
-            radgrad.addColorStop(0, Phaser.Color.getWebRGB(c))
-            c.a = 0
-            radgrad.addColorStop(1, Phaser.Color.getWebRGB(c))
-            bmd.context.fillStyle = radgrad
-            bmd.context.fillRect(0, 0, 32, 32)
-            bmd.dirty = true
-
-            shape.emitter.start(true, 1000, null, 10)
+            this.streak++
+            shape.destroy('success', this.streak).onComplete.add(() => this.cleanup(shape))
           }
           else {
-            this.failSound.play('', 0, 0.3)
+            this.failSound.play('', 0, 0.5)
             this.lives -= 1
+            this.streak = 0
             this.lifeOrbs[Math.max(this.lives, 0)].animate()
             shape.destroy('fail').onComplete.add(() => this.cleanup(shape))
           }
@@ -211,10 +208,10 @@ export default class extends Phaser.State {
         }
         else {
           let shape = utils.randomPick(availableShapes)
-          this.newTargetSound.play('', 0, 0.3)
+          this.newTargetSound.play('', 0, 0.5)
           this.targets[targetIndex] = new Shape(color, shape, true, targetIndex)
           // Fairness measure
-          this.shapes.filter(shape => shape !== undefined && shape.equals(this.targets[targetIndex])).forEach(shape => shape.lifespan += 2)
+          this.shapes.filter(shape => shape !== undefined && shape.equals(this.targets[targetIndex])).forEach(shape => shape.lifespan += 3)
         }
       }
       if (targetChange === 'remove') {

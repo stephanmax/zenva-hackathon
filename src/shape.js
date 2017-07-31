@@ -16,10 +16,11 @@ export default class Shape {
     this.graphics = game.add.graphics(this.x, this.y)
     this.clickable = false
 
-    this.emitter = game.add.emitter(this.x, this.y, 100)
-    this.emitter.particleClass = MyParticle
-    this.emitter.makeParticles()
-    // this.emitter.gravity = 200
+    if (!this.isTarget) {
+      this.emitter = game.add.emitter(this.x, this.y, 100)
+      this.emitter.particleClass = MyParticle(this.color)
+      this.emitter.makeParticles()
+    }
 
     game.add.tween(this.graphics).from({alpha: 0}, 1000, Phaser.Easing.Linear.None, true)
   }
@@ -61,26 +62,30 @@ export default class Shape {
     this.graphics.endFill()
   }
 
-  destroy(style) {
+  destroy(style, streak) {
     this.graphics.inputEnabled = false
 
     switch (style) {
       case 'miss':
         game.add.tween(this.graphics.scale).to({x: 0.5, y: 0.5}, 200, Phaser.Easing.Sinusoidal.InOut, true, 0, 5, true)
         return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.In, true)
-        break
       case 'success':
-        game.add.tween(this.graphics.scale).to({x: 5, y: 5}, 1000, Phaser.Easing.Linear.In, true)
+        if (streak >= 15) {
+          game.add.tween(this.graphics.scale).to({x: 5, y: 5}, 1000, Phaser.Easing.Linear.In, true)
+        }
+        if (streak >= 25) {
+          game.add.tween(this.graphics).to({rotation: 360}, 1000, Phaser.Easing.Linear.In, true)
+        }
+        if (streak >= 40) {
+          this.emitter.start(true, 1000, null, 10)
+        }
         return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.Out, true)
-        break
       case 'fail':
-        let bounce = game.add.tween(this.graphics).to({x: 10}, 900, Phaser.Easing.Bounce.InOut, true, 0, 5, true)
-        game.add.tween(this.graphics).to({x: -10}, 100, Phaser.Easing.Linear.In, true).chain(bounce)
         return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.Out, true)
-        break
       default:
         return game.add.tween(this.graphics).to({alpha: 0}, 1000, Phaser.Easing.Quartic.Out, true)
     }
+
   }
 
   equals(shape) {

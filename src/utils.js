@@ -1,5 +1,5 @@
 export function random(x) {
-  return Math.floor(Math.random() * x)
+  return game.rnd.integerInRange(0, x-1)
 }
 
 export function randomPick(arr) {
@@ -7,5 +7,5 @@ export function randomPick(arr) {
 }
 
 export function randomFloat(x) {
-  return Math.random() * x
+  return game.rnd.realInRange(0, x)
 }
